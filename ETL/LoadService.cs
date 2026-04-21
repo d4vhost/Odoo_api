@@ -14,8 +14,12 @@ public class LoadService
     {
         Console.WriteLine("\n  Limpiando tablas destino...");
         string[] tablas = {
-            "fact_ventas", "dim_cliente_ssis", "dim_producto_ssis",
-            "dim_fecha_ssis", "dim_sucursal", "dim_metodo_pago"
+            "fact_ventas_ssis",
+            "dim_cliente_ssis",
+            "dim_producto_ssis",
+            "dim_fecha_ssis",
+            "dim_sucursal_ssis",
+            "dim_metodo_pago_ssis"
         };
         using (var conn = new SqlConnection(_connStr))
         {
@@ -45,7 +49,6 @@ public class LoadService
         dt.Columns.Add("correo", typeof(string));
         dt.Columns.Add("estado", typeof(string));
 
-        // ── CONTROL DE DUPLICADOS — clave única: cédula ───────
         var cedulasVistas = new HashSet<string>();
         int duplicados = 0;
 
@@ -78,7 +81,6 @@ public class LoadService
         using (var conn = new SqlConnection(_connStr))
         {
             conn.Open();
-
             using (var bulk = new SqlBulkCopy(conn))
             {
                 bulk.DestinationTableName = "dbo.dim_cliente_ssis";
@@ -119,7 +121,6 @@ public class LoadService
         dt.Columns.Add("precio", typeof(double));
         dt.Columns.Add("estado", typeof(string));
 
-        // ── CONTROL DE DUPLICADOS — clave única: nombre del producto ──
         var nombresVistos = new HashSet<string>();
         int duplicados = 0;
 
@@ -144,7 +145,6 @@ public class LoadService
         using (var conn = new SqlConnection(_connStr))
         {
             conn.Open();
-
             using (var bulk = new SqlBulkCopy(conn))
             {
                 bulk.DestinationTableName = "dbo.dim_producto_ssis";
@@ -172,8 +172,6 @@ public class LoadService
     public void CargarDimFecha(List<Venta> ventas)
     {
         Console.WriteLine("\n  Cargando dim_fecha_ssis...");
-
-        // HashSet ya controla duplicados por id_fecha (yyyyMMdd)
         var fechasVistas = new HashSet<int>();
 
         var dt = new DataTable();
@@ -192,7 +190,6 @@ public class LoadService
             var fecha = DateTime.Parse(v.FechaVenta);
             int idFecha = int.Parse(fecha.ToString("yyyyMMdd"));
 
-            // ── CONTROL DE DUPLICADOS — clave única: yyyyMMdd ─
             if (fechasVistas.Contains(idFecha)) continue;
             fechasVistas.Add(idFecha);
 
@@ -208,7 +205,6 @@ public class LoadService
         using (var conn = new SqlConnection(_connStr))
         {
             conn.Open();
-
             using (var bulk = new SqlBulkCopy(conn))
             {
                 bulk.DestinationTableName = "dbo.dim_fecha_ssis";
@@ -230,12 +226,10 @@ public class LoadService
     // ── DIM SUCURSAL ──────────────────────────────────────────
     public Dictionary<string, int> CargarDimSucursal(List<Venta> ventas)
     {
-        Console.WriteLine("\n  Cargando dim_sucursal...");
+        Console.WriteLine("\n  Cargando dim_sucursal_ssis...");
         var mapa = new Dictionary<string, int>();
         var dt = new DataTable();
         dt.Columns.Add("nombre_sucursal", typeof(string));
-
-        // ── CONTROL DE DUPLICADOS — clave única: nombre sucursal ──
         var vistos = new HashSet<string>();
 
         foreach (var v in ventas)
@@ -243,7 +237,6 @@ public class LoadService
             string sucursalKey = (v.Sucursal ?? "").Trim();
             if (string.IsNullOrEmpty(sucursalKey)) continue;
             if (vistos.Contains(sucursalKey)) continue;
-
             vistos.Add(sucursalKey);
             dt.Rows.Add(v.Sucursal);
         }
@@ -251,16 +244,15 @@ public class LoadService
         using (var conn = new SqlConnection(_connStr))
         {
             conn.Open();
-
             using (var bulk = new SqlBulkCopy(conn))
             {
-                bulk.DestinationTableName = "dbo.dim_sucursal";
+                bulk.DestinationTableName = "dbo.dim_sucursal_ssis";
                 bulk.ColumnMappings.Add("nombre_sucursal", "nombre_sucursal");
                 bulk.WriteToServer(dt);
             }
 
             var cmd = new SqlCommand(
-                "SELECT id_sucursal_sk, nombre_sucursal FROM dbo.dim_sucursal", conn);
+                "SELECT id_sucursal_sk, nombre_sucursal FROM dbo.dim_sucursal_ssis", conn);
             using (var reader = cmd.ExecuteReader())
                 while (reader.Read())
                     mapa[(string)reader["nombre_sucursal"]] = (int)reader["id_sucursal_sk"];
@@ -273,12 +265,10 @@ public class LoadService
     // ── DIM METODO PAGO ───────────────────────────────────────
     public Dictionary<string, int> CargarDimMetodoPago(List<Venta> ventas)
     {
-        Console.WriteLine("\n  Cargando dim_metodo_pago...");
+        Console.WriteLine("\n  Cargando dim_metodo_pago_ssis...");
         var mapa = new Dictionary<string, int>();
         var dt = new DataTable();
         dt.Columns.Add("metodo_pago", typeof(string));
-
-        // ── CONTROL DE DUPLICADOS — clave única: metodo_pago ──
         var vistos = new HashSet<string>();
 
         foreach (var v in ventas)
@@ -286,7 +276,6 @@ public class LoadService
             string metodoKey = (v.MetodoPago ?? "").Trim();
             if (string.IsNullOrEmpty(metodoKey)) continue;
             if (vistos.Contains(metodoKey)) continue;
-
             vistos.Add(metodoKey);
             dt.Rows.Add(v.MetodoPago);
         }
@@ -294,16 +283,15 @@ public class LoadService
         using (var conn = new SqlConnection(_connStr))
         {
             conn.Open();
-
             using (var bulk = new SqlBulkCopy(conn))
             {
-                bulk.DestinationTableName = "dbo.dim_metodo_pago";
+                bulk.DestinationTableName = "dbo.dim_metodo_pago_ssis";
                 bulk.ColumnMappings.Add("metodo_pago", "metodo_pago");
                 bulk.WriteToServer(dt);
             }
 
             var cmd = new SqlCommand(
-                "SELECT id_metodo_pago_sk, metodo_pago FROM dbo.dim_metodo_pago", conn);
+                "SELECT id_metodo_pago_sk, metodo_pago FROM dbo.dim_metodo_pago_ssis", conn);
             using (var reader = cmd.ExecuteReader())
                 while (reader.Read())
                     mapa[(string)reader["metodo_pago"]] = (int)reader["id_metodo_pago_sk"];
@@ -321,7 +309,7 @@ public class LoadService
         Dictionary<string, int> mapaSucursales,
         Dictionary<string, int> mapaMetodos)
     {
-        Console.WriteLine("\n  Cargando fact_ventas...");
+        Console.WriteLine("\n  Cargando fact_ventas_ssis...");
 
         var dt = new DataTable();
         dt.Columns.Add("id_venta_odoo", typeof(int));
@@ -338,7 +326,6 @@ public class LoadService
         dt.Columns.Add("vendedor", typeof(string));
         dt.Columns.Add("sucursal", typeof(string));
 
-        // ── CONTROL DE DUPLICADOS — clave única: ventaId + productoId ──
         var factsVistos = new HashSet<string>();
         int duplicados = 0;
 
@@ -353,7 +340,6 @@ public class LoadService
 
             foreach (var d in v.Detalles ?? new List<DetalleVenta>())
             {
-                // ── clave compuesta: id_venta + id_producto ────
                 string factKey = $"{v.Id}-{d.ProductoId}";
 
                 if (factsVistos.Contains(factKey))
@@ -378,16 +364,15 @@ public class LoadService
         }
 
         if (duplicados > 0)
-            Console.WriteLine($"    [LIMPIEZA] {duplicados} filas duplicadas eliminadas en fact_ventas");
+            Console.WriteLine($"    [LIMPIEZA] {duplicados} filas duplicadas eliminadas en fact_ventas_ssis");
 
         using (var conn = new SqlConnection(_connStr))
         {
             conn.Open();
-
             using (var bulk = new SqlBulkCopy(conn))
             {
                 bulk.BulkCopyTimeout = 120;
-                bulk.DestinationTableName = "dbo.fact_ventas";
+                bulk.DestinationTableName = "dbo.fact_ventas_ssis";
                 bulk.ColumnMappings.Add("id_venta_odoo", "id_venta_odoo");
                 bulk.ColumnMappings.Add("id_fecha", "id_fecha");
                 bulk.ColumnMappings.Add("id_cliente_sk", "id_cliente_sk");
@@ -405,6 +390,6 @@ public class LoadService
             }
         }
 
-        Console.WriteLine($"    → {dt.Rows.Count} filas cargadas en fact_ventas ✓");
+        Console.WriteLine($"    → {dt.Rows.Count} filas cargadas en fact_ventas_ssis ✓");
     }
 }
