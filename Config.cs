@@ -10,7 +10,7 @@ namespace TechStore_ETL_API
     {
         public const string OdooBaseUrl = "http://localhost:8069";
         public const string SqlServer =
-            "Server=10.79.17.222,1433;" +
+            "Server=localhost,1433;" +
             "Database=techstore_bi_p;" +
             "User Id=sa;Password=admin;" +
             "TrustServerCertificate=True;";
